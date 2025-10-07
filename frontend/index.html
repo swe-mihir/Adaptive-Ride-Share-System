@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adaptive Ride-Sharing System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        .map-container { height: 100%; border-radius: 8px; overflow: hidden; border: 1px solid #334155; }
+        .metric-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+        .metric-label { color: #94a3b8; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-value { color: #f1f5f9; font-size: 24px; font-weight: 700; margin-top: 4px; }
+        .btn { padding: 8px 16px; border-radius: 6px; font-weight: 500; cursor: pointer; transition: all 0.2s; border: 1px solid #334155; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .setting-input { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px 12px; color: #e2e8f0; width: 100%; }
+        .leaflet-container { background: #1e293b; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function App() {
+            const [viewMode, setViewMode] = useState('comparison');
+            const [settings, setSettings] = useState({ detourMax: 1.5, clusterRadius: 1.0, capacity: 3 });
+            const [metrics, setMetrics] = useState({ fcfs: null, optimal: null });
+            const [isRunning, setIsRunning] = useState(false);
+            const [socket, setSocket] = useState(null);
+
+            useEffect(() => {
+                const newSocket = io('http://localhost:5001');
+                newSocket.on('connect', () => console.log('✓ Connected'));
+                newSocket.on('simulation_started', () => setIsRunning(true));
+                newSocket.on('simulation_complete', () => setIsRunning(false));
+                newSocket.on('simulation_paused', () => setIsRunning(false));
+                setSocket(newSocket);
+                return () => newSocket.close();
+            }, []);
+
+            useEffect(() => {
+                const interval = setInterval(async () => {
+                    try {
+                        const response = await fetch('http://localhost:5001/api/metrics');
+                        const data = await response.json();
+                        setMetrics(data);
+                    } catch (error) {
+                        console.error('Error fetching metrics:', error);
+                    }
+                }, 1000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const handleStart = () => socket && socket.emit('start_simulation', { config: settings });
+            const handlePause = () => socket && socket.emit('pause_simulation');
+            const handleReset = () => socket && socket.emit('reset_simulation');
+
+            return (
+                <div className="min-h-screen bg-slate-900 text-slate-100">
+                    <header className="bg-slate-800 border-b border-slate-700 px-6 py-4">
+                        <h1 className="text-2xl font-bold">Adaptive Ride-Sharing System</h1>
+                        <div className="mt-4 flex gap-2">
+                            <select value={viewMode} onChange={(e) => setViewMode(e.target.value)} className="setting-input">
+                                <option value="comparison">Split View: FCFS vs Optimal</option>
+                                <option value="fcfs">FCFS Only</option>
+                                <option value="optimal">Optimal Only</option>
+                            </select>
+                        </div>
+                    </header>
+
+                    <div className="flex h-[calc(100vh-120px)]">
+                        <aside className="w-64 bg-slate-800 border-r border-slate-700 p-4 overflow-y-auto">
+                            <h2 className="text-lg font-semibold mb-4">Settings</h2>
+
+                            <div className="metric-card">
+                                <label className="metric-label">Max Detour</label>
+                                <input type="number" step="0.1" value={settings.detourMax}
+                                    onChange={(e) => setSettings({...settings, detourMax: parseFloat(e.target.value)})}
+                                    className="setting-input mt-2" />
+                            </div>
+
+                            <div className="metric-card">
+                                <label className="metric-label">Cluster Radius (km)</label>
+                                <input type="number" step="0.1" value={settings.clusterRadius}
+                                    onChange={(e) => setSettings({...settings, clusterRadius: parseFloat(e.target.value)})}
+                                    className="setting-input mt-2" />
+                            </div>
+
+                            <div className="metric-card">
+                                <label className="metric-label">Capacity</label>
+                                <div className="flex gap-2 mt-2">
+                                    {[2, 3, 4].map(cap => (
+                                        <button key={cap} onClick={() => setSettings({...settings, capacity: cap})}
+                                            className={`btn flex-1 ${settings.capacity === cap ? 'btn-primary' : 'bg-slate-700'}`}>
+                                            {cap}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="metric-card">
+                                <div className="flex flex-col gap-2">
+                                    {!isRunning ? (
+                                        <button onClick={handleStart} className="btn btn-primary">▶️ Start</button>
+                                    ) : (
+                                        <button onClick={handlePause} className="btn bg-yellow-600">⏸️ Pause</button>
+                                    )}
+                                    <button onClick={handleReset} className="btn bg-slate-700">🔄 Reset</button>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <main className="flex-1 p-4">
+                            {viewMode === 'comparison' && (
+                                <div className="grid grid-cols-2 gap-4 h-full">
+                                    <MapView title="FCFS" data={metrics.fcfs} />
+                                    <MapView title="Optimal" data={metrics.optimal} />
+                                </div>
+                            )}
+                            {viewMode === 'fcfs' && <MapView title="FCFS Carpooling" data={metrics.fcfs} />}
+                            {viewMode === 'optimal' && <MapView title="Optimal Carpooling" data={metrics.optimal} />}
+                        </main>
+
+                        <aside className="w-72 bg-slate-800 border-l border-slate-700 p-4 overflow-y-auto">
+                            <h2 className="text-lg font-semibold mb-4">Live Metrics</h2>
+                            {viewMode === 'comparison' ? (
+                                <ComparisonMetrics fcfs={metrics.fcfs} optimal={metrics.optimal} />
+                            ) : (
+                                <SingleMetrics data={metrics[viewMode]} />
+                            )}
+
+                            <div className="mt-6">
+                                <h2 className="text-lg font-semibold mb-4">Map Legend</h2>
+                                <MapLegend />
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+            );
+        }
+
+        function MapView({ title, data }) {
+            const mapRef = useRef(null);
+            const mapInstanceRef = useRef(null);
+            const markersRef = useRef({ drivers: [], requests: [], trips: [] });
+
+            useEffect(() => {
+                if (!mapInstanceRef.current && mapRef.current) {
+                    const map = L.map(mapRef.current).setView([19.0760, 72.8777], 7);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap'
+                    }).addTo(map);
+                    mapInstanceRef.current = map;
+                }
+            }, []);
+
+            useEffect(() => {
+                if (!mapInstanceRef.current || !data || !data.entities) return;
+
+                const map = mapInstanceRef.current;
+                const entities = data.entities;
+
+                // Clear old markers
+                Object.values(markersRef.current).flat().forEach(m => map.removeLayer(m));
+                markersRef.current = { drivers: [], requests: [], trips: [] };
+
+                // Add available drivers (green)
+                (entities.drivers || []).forEach(driver => {
+                    const marker = L.circleMarker([driver.lat, driver.lon], {
+                        radius: 6,
+                        fillColor: '#10b981',
+                        color: '#fff',
+                        weight: 2,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    marker.bindPopup(`Driver ${driver.id}<br>Type: ${driver.type}<br>Status: ${driver.status}`);
+                    markersRef.current.drivers.push(marker);
+                });
+
+                // Add waiting requests (orange)
+                (entities.requests || []).forEach(req => {
+                    const originMarker = L.circleMarker([req.origin_lat, req.origin_lon], {
+                        radius: 5,
+                        fillColor: '#f59e0b',
+                        color: '#fff',
+                        weight: 2,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    originMarker.bindPopup(`Request ${req.id}<br>Status: ${req.status}`);
+                    markersRef.current.requests.push(originMarker);
+
+                    // Destination marker
+                    const destMarker = L.circleMarker([req.dest_lat, req.dest_lon], {
+                        radius: 4,
+                        fillColor: '#ef4444',
+                        color: '#fff',
+                        weight: 1,
+                        fillOpacity: 0.6
+                    }).addTo(map);
+                    markersRef.current.requests.push(destMarker);
+
+                    // Line from origin to destination
+                    const line = L.polyline([[req.origin_lat, req.origin_lon], [req.dest_lat, req.dest_lon]], {
+                        color: '#f59e0b',
+                        weight: 1,
+                        opacity: 0.4,
+                        dashArray: '5, 5'
+                    }).addTo(map);
+                    markersRef.current.requests.push(line);
+                });
+
+                // Add active trips (blue with routes)
+                (entities.trips || []).forEach(trip => {
+                    // Driver marker (larger, blue)
+                    const driverMarker = L.circleMarker([trip.driver_lat, trip.driver_lon], {
+                        radius: 8,
+                        fillColor: '#3b82f6',
+                        color: '#fff',
+                        weight: 2,
+                        fillOpacity: 1
+                    }).addTo(map);
+                    driverMarker.bindPopup(`Trip ${trip.id}<br>Driver ${trip.driver_id}<br>Passengers: ${trip.passenger_count}`);
+                    markersRef.current.trips.push(driverMarker);
+
+                    // Route line
+                    if (trip.route && trip.route.length > 0) {
+                        const routeLine = L.polyline(trip.route, {
+                            color: '#3b82f6',
+                            weight: 3,
+                            opacity: 0.7
+                        }).addTo(map);
+                        markersRef.current.trips.push(routeLine);
+                    }
+                });
+
+            }, [data]);
+
+            return (
+                <div className="flex flex-col h-full">
+                    <div className="bg-slate-800 px-4 py-2 rounded-t-lg border border-slate-700">
+                        <h3 className="font-semibold">{title}</h3>
+                    </div>
+                    <div ref={mapRef} className="map-container flex-1"></div>
+                </div>
+            );
+        }
+
+        function ComparisonMetrics({ fcfs, optimal }) {
+            if (!fcfs || !optimal) return <div className="text-slate-400">Waiting...</div>;
+            return (
+                <div>
+                    <div className="metric-card">
+                        <div className="metric-label">Active Requests</div>
+                        <div className="flex justify-between mt-2">
+                            <div>
+                                <div className="text-sm text-slate-400">FCFS</div>
+                                <div className="text-xl font-bold">{fcfs.live?.active_requests || 0}</div>
+                            </div>
+                            <div>
+                                <div className="text-sm text-slate-400">Optimal</div>
+                                <div className="text-xl font-bold">{optimal.live?.active_requests || 0}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="metric-card">
+                        <div className="metric-label">Total Cost</div>
+                        <div className="flex justify-between mt-2">
+                            <div>
+                                <div className="text-sm text-slate-400">FCFS</div>
+                                <div className="text-xl font-bold">₹{(fcfs.cumulative?.total_cost || 0).toFixed(0)}</div>
+                            </div>
+                            <div>
+                                <div className="text-sm text-slate-400">Optimal</div>
+                                <div className="text-xl font-bold text-green-400">₹{(optimal.cumulative?.total_cost || 0).toFixed(0)}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SingleMetrics({ data }) {
+            if (!data) return <div className="text-slate-400">Waiting...</div>;
+            return (
+                <div>
+                    <div className="metric-card">
+                        <div className="metric-label">Active Requests</div>
+                        <div className="metric-value">{data.live?.active_requests || 0}</div>
+                    </div>
+                    <div className="metric-card">
+                        <div className="metric-label">Total Cost</div>
+                        <div className="metric-value">₹{(data.cumulative?.total_cost || 0).toFixed(0)}</div>
+                    </div>
+                </div>
+            );
+        }
+
+        function MapLegend() {
+            return (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div style={{
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            backgroundColor: '#10b981',
+                            border: '2px solid white'
+                        }}></div>
+                        <span className="text-sm text-slate-300">Available Drivers</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div style={{
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            backgroundColor: '#f59e0b',
+                            border: '2px solid white'
+                        }}></div>
+                        <span className="text-sm text-slate-300">Waiting Requests</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div style={{
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            backgroundColor: '#ef4444',
+                            border: '2px solid white'
+                        }}></div>
+                        <span className="text-sm text-slate-300">Request Destinations</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div style={{
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            backgroundColor: '#3b82f6',
+                            border: '2px solid white'
+                        }}></div>
+                        <span className="text-sm text-slate-300">Active Trips (Drivers)</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div style={{
+                            width: '24px',
+                            height: '2px',
+                            backgroundColor: '#f59e0b',
+                            opacity: 0.4,
+                            borderTop: '1px dashed #f59e0b'
+                        }}></div>
+                        <span className="text-sm text-slate-300">Request Route</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div style={{
+                            width: '24px',
+                            height: '3px',
+                            backgroundColor: '#3b82f6',
+                            opacity: 0.7
+                        }}></div>
+                        <span className="text-sm text-slate-300">Trip Route</span>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

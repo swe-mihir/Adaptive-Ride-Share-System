@@ -1,0 +1,50 @@
+carpooling:
+  capacity: 3
+  destination_cluster_radius_km: 5
+  detour_max: 2
+  dynamic_insertion_enabled: true
+costs:
+  detour_penalty_per_sec: 2
+  quit_penalty: 100
+  waiting_cost_per_sec: 0.5
+driver_types:
+- arrival_rate: 0.5
+  base_cost: 20
+  id: 1
+  name: Fast Response
+  speed_multiplier: 1.2
+- arrival_rate: 0.7
+  base_cost: 15
+  id: 2
+  name: Normal
+  speed_multiplier: 1.0
+- arrival_rate: 0.5
+  base_cost: 10
+  id: 3
+  name: Economy
+  speed_multiplier: 0.9
+metrics:
+  enable_streaming: true
+  output_file: metrics.json
+  track_history: true
+  update_interval: 10
+osrm:
+  batch_size: 100
+  cache_size: 10000
+  server_url: http://127.0.0.1:5000
+region:
+  bounds:
+    lat_min: 18.89
+    lat_max: 19.27  # ~42 km north-south
+    lon_min: 72.77
+    lon_max: 72.98  # ~23 km east-west
+  name: Mumbai
+requests:
+  arrival_rate: 0.2
+  weibull_scale: 1000
+  weibull_shape: 2.0
+simulation:
+  duration: 300
+  max_drivers: 150
+  initial_drivers: 50
+  random_seed: 42

@@ -1,0 +1,153 @@
+{
+  "simulation_time": 600.1067982983745,
+  "cumulative": {
+    "total_requests": 298,
+    "total_matches": 125,
+    "total_quits": 0,
+    "match_rate": 1.0,
+    "total_cost": 2545320.8,
+    "avg_waiting_time": 0.0,
+    "avg_detour_ratio": 0
+  },
+  "carpooling": {
+    "pool_utilization": {
+      "1": 125,
+      "2": 0,
+      "3": 0
+    },
+    "avg_pool_size": 1.0,
+    "total_trips": 125,
+    "dynamic_insertions": 173,
+    "insertion_rate": 0.5805369127516778
+  },
+  "cost_breakdown": {
+    "waiting_cost": 0.0,
+    "routing_cost": 2545320.8,
+    "quit_penalty": 0.0,
+    "detour_penalty": 0.0
+  },
+  "driver_stats": {
+    "3": {
+      "trips": 46,
+      "passengers": 46
+    },
+    "1": {
+      "trips": 42,
+      "passengers": 42
+    },
+    "2": {
+      "trips": 37,
+      "passengers": 37
+    }
+  },
+  "recent_events": [
+    {
+      "type": "request_arrival",
+      "time": 588.130005107334,
+      "request_id": "r_9413dd00",
+      "origin": {
+        "lat": 19.257401289923727,
+        "lon": 72.81710163148986
+      },
+      "destination": {
+        "lat": 19.1419579328853,
+        "lon": 72.92579822866134
+      }
+    },
+    {
+      "type": "dynamic_insertion",
+      "time": 588.130005107334,
+      "request_id": "r_9413dd00",
+      "trip_id": "t_1c069619",
+      "new_pool_size": 3
+    },
+    {
+      "type": "request_arrival",
+      "time": 591.9033595634081,
+      "request_id": "r_185316ab",
+      "origin": {
+        "lat": 19.26424619304974,
+        "lon": 72.92839213453324
+      },
+      "destination": {
+        "lat": 19.03941417639061,
+        "lon": 72.89403394513887
+      }
+    },
+    {
+      "type": "dynamic_insertion",
+      "time": 591.9033595634081,
+      "request_id": "r_185316ab",
+      "trip_id": "t_0876cc61",
+      "new_pool_size": 2
+    },
+    {
+      "type": "request_arrival",
+      "time": 594.0669540042339,
+      "request_id": "r_0db4a9bd",
+      "origin": {
+        "lat": 19.15954191481959,
+        "lon": 72.80513747384022
+      },
+      "destination": {
+        "lat": 19.186640052621712,
+        "lon": 72.89259228390796
+      }
+    },
+    {
+      "type": "match",
+      "time": 594.0669540042339,
+      "trip_id": "t_31f3f0ef",
+      "driver_id": "d_178ccd51",
+      "passengers": [
+        "r_0db4a9bd"
+      ],
+      "pool_size": 1,
+      "route_cost": 43032.4
+    },
+    {
+      "type": "request_arrival",
+      "time": 594.1536508252782,
+      "request_id": "r_ee4cfb89",
+      "origin": {
+        "lat": 18.990823932271077,
+        "lon": 72.89632631465297
+      },
+      "destination": {
+        "lat": 19.002692766638255,
+        "lon": 72.92002907445496
+      }
+    },
+    {
+      "type": "dynamic_insertion",
+      "time": 594.1536508252782,
+      "request_id": "r_ee4cfb89",
+      "trip_id": "t_b78714e6",
+      "new_pool_size": 3
+    },
+    {
+      "type": "request_arrival",
+      "time": 596.9996113550978,
+      "request_id": "r_ba96b144",
+      "origin": {
+        "lat": 19.161444121579297,
+        "lon": 72.86696039020076
+      },
+      "destination": {
+        "lat": 19.2399779180167,
+        "lon": 72.91586503972319
+      }
+    },
+    {
+      "type": "match",
+      "time": 596.9996113550978,
+      "trip_id": "t_56110a3f",
+      "driver_id": "d_5862d4b7",
+      "passengers": [
+        "r_ba96b144"
+      ],
+      "pool_size": 1,
+      "route_cost": 22202.1
+    }
+  ]
+}
